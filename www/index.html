@@ -217,47 +217,40 @@
         }
 
         function emailResults() {
-            const logs = JSON.parse(localStorage.getItem('headache_logs') || '[]');
-            if (logs.length === 0) return alert("Nothing to export.");
-            
-            logs.sort((a, b) => new Date(b.start) - new Date(a.start));
+    const logs = JSON.parse(localStorage.getItem('headache_logs') || '[]');
+    if (logs.length === 0) return alert("Nothing to export.");
+    
+    // 1. Sort Newest to Oldest
+    logs.sort((a, b) => new Date(b.start) - new Date(a.start));
 
-            let header = "Mary Aiello Pain log%0D%0A";
-            header += "--------------------------------------------------%0D%0A";
-            header += "DATE & TIME          | DAYS | NOTES%0D%0A";
-            header += "--------------------------------------------------%0D%0A";
+    // 2. Build the Plain Text Body
+    let bodyText = "PAIN LOG EXPORT\r\n";
+    bodyText += "========================================\r\n";
+    bodyText += "DATE/TIME            | DAYS | NOTES\r\n";
+    bodyText += "----------------------------------------\r\n";
 
-            let rows = "";
-            logs.forEach(log => {
-                const datePart = log.start.replace('T', ' ').padEnd(20, ' ');
-                const durationPart = log.duration.toString().padEnd(4, ' ');
-                const notesPart = log.notes || "";
-                rows += `${datePart} | ${durationPart} | ${notesPart}%0D%0A`;
-            });
+    logs.forEach(log => {
+        const datePart = log.start.replace('T', ' ').padEnd(20, ' ');
+        const durationPart = log.duration.toString().padEnd(4, ' ');
+        const notesPart = log.notes || "";
+        bodyText += `${datePart} | ${durationPart} | ${notesPart}\r\n`;
+    });
 
-            let fullBody = "%0D%0A%0D%0A" + header + rows;
-            const MAX_LEN = 2000;
-            const SAFETY_BUFFER = 50;
+    // 3. Encode the content properly for a URL
+    const subject = encodeURIComponent("Pain Log Export");
+    const encodedBody = encodeURIComponent(bodyText);
 
-            if (fullBody.length > MAX_LEN) {
-                const overflow = fullBody.length - MAX_LEN;
-                const totalTrim = overflow + SAFETY_BUFFER;
-                
-                const proceed = confirm(
-                    `The history is too long for an email link (${fullBody.length} characters).\n\n` +
-                    `To fix this, I need to trim approximately ${totalTrim} characters from the end (the oldest entries).\n\n` +
-                    `Would you like to trim and proceed?`
-                );
+    // 4. Safety Check: If the URL is too long (over ~2000 chars), it will fail.
+    const mailtoUrl = `mailto:?subject=${subject}&body=${encodedBody}`;
+    
+    if (mailtoUrl.length > 2000) {
+        alert("The history is too long to send via a direct email link. Please try deleting old entries or use a 'Copy to Clipboard' feature.");
+        return;
+    }
 
-                if (proceed) {
-                    fullBody = fullBody.substring(0, fullBody.length - totalTrim) + "%0D%0A... [History Truncated Due to Length]";
-                } else {
-                    return; 
-                }
-            }
-
-            window.location.href = `mailto:?subject=Mary Aiello Pain Log Export&body=${fullBody}`;
-        }
+    // 5. Trigger the email
+    window.location.href = mailtoUrl;
+}
     </script>
 </body>
 </html>
